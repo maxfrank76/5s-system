@@ -35,20 +35,57 @@ DESKTOP_TEMPLATE = '''
             background: #f5f8fa; 
             min-height: 100vh;
         }
+        
+        /* Шапка */
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .logout-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+        
+        /* Основной контейнер */
         .app-container {
             display: grid;
             grid-template-columns: 280px 1fr;
-            min-height: 100vh;
+            min-height: calc(100vh - 80px);
         }
+        
         .sidebar {
             background: #2c3e50;
             color: white;
             padding: 2rem 1rem;
         }
+        
         .main-content {
             padding: 2rem;
             background: white;
         }
+        
+        /* Экран входа */
         .login-container {
             max-width: 500px;
             margin: 100px auto;
@@ -57,6 +94,8 @@ DESKTOP_TEMPLATE = '''
             border-radius: 15px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
         }
+        
+        /* Навигация */
         .nav-item {
             padding: 1rem 1.5rem;
             margin: 0.5rem 0;
@@ -64,12 +103,16 @@ DESKTOP_TEMPLATE = '''
             cursor: pointer;
             transition: all 0.3s;
         }
+        
         .nav-item:hover {
             background: #34495e;
         }
+        
         .nav-item.active {
             background: #3498db;
         }
+        
+        /* Карточки */
         .card {
             background: white;
             border-radius: 12px;
@@ -78,6 +121,7 @@ DESKTOP_TEMPLATE = '''
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             border: 1px solid #e1e8ed;
         }
+        
         .user-panel {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
@@ -85,12 +129,15 @@ DESKTOP_TEMPLATE = '''
             border-radius: 12px;
             margin-bottom: 2rem;
         }
+        
+        /* Статистика */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 1.5rem;
             margin-top: 1.5rem;
         }
+        
         .stat-card {
             background: white;
             padding: 1.5rem;
@@ -99,47 +146,102 @@ DESKTOP_TEMPLATE = '''
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
             border-left: 4px solid #3498db;
         }
+        
+        /* Формы */
         .hidden { display: none; }
         .form-group { margin-bottom: 1.5rem; }
-        label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #2c3e50; }
+        
         input, select { 
-            width: 100%; padding: 12px; border: 2px solid #e1e8ed; 
-            border-radius: 8px; font-size: 16px; 
+            width: 100%; 
+            padding: 12px; 
+            border: 2px solid #e1e8ed; 
+            border-radius: 8px; 
+            font-size: 16px; 
+            transition: border-color 0.3s;
         }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
         button { 
-            width: 100%; padding: 15px; background: #3498db; color: white;
-            border: none; border-radius: 8px; font-size: 16px; cursor: pointer;
+            width: 100%; 
+            padding: 15px; 
+            background: #3498db; 
+            color: white;
+            border: none; 
+            border-radius: 8px; 
+            font-size: 16px; 
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        .error {
+            color: #e74c3c;
+            margin-top: 1rem;
+            text-align: center;
+            padding: 10px;
+            background: #fdf2f2;
+            border-radius: 6px;
+            border: 1px solid #f5c6cb;
         }
     </style>
 </head>
 <body>
+    <!-- Экран входа -->
     <div id="loginScreen">
         <div class="login-container">
             <h1 style="text-align: center; margin-bottom: 2rem; color: #2c3e50;">🏭 Система 5С</h1>
+            
             <div class="form-group">
-                <label>Имя пользователя:</label>
-                <input type="text" id="username" value="worker1">
+                <label>Выберите пользователя:</label>
+                <select id="usernameSelect" onchange="onUserSelect()">
+                    <option value="">-- Выберите пользователя --</option>
+                    <option value="worker1">👷 worker1 - Работник (Цех)</option>
+                    <option value="worker2">👷 worker2 - Работник (Склад)</option>
+                    <option value="auditor1">🔍 auditor1 - Аудитор</option>
+                    <option value="manager1">👨‍💼 manager1 - Руководитель цеха</option>
+                    <option value="admin">⚙️ admin - Администратор</option>
+                    <option value="quality_dir">🎯 quality_dir - Директор по качеству</option>
+                    <option value="production_dir">🏭 production_dir - Директор по производству</option>
+                </select>
             </div>
+            
             <div class="form-group">
                 <label>Пароль:</label>
-                <input type="password" id="password" value="worker1123">
+                <input type="password" id="password" placeholder="Пароль заполнится автоматически" readonly>
             </div>
+            
             <button onclick="login()">Войти в систему</button>
-            <div id="loginError" style="color: #e74c3c; margin-top: 1rem; text-align: center;"></div>
+            <div id="loginError" class="error"></div>
             
             <div style="margin-top: 2rem; padding: 1.5rem; background: #f8f9fa; border-radius: 8px;">
-                <h4>Тестовые пользователи (все пароли: username123):</h4>
-                <p>👷 worker1 - Работник</p>
-                <p>🔍 auditor1 - Аудитор</p>
-                <p>👨‍💼 manager1 - Руководитель</p>
-                <p>⚙️ admin - Администратор</p>
-                <p>🎯 quality_dir - Директор по качеству</p>
+                <h4 style="margin-bottom: 1rem;">💡 Подсказка:</h4>
+                <p>Выберите пользователя из списка → пароль заполнится автоматически → нажмите "Войти"</p>
+                <p style="margin-top: 0.5rem; font-size: 0.9em; color: #666;">Все пароли: <strong>username123</strong></p>
             </div>
         </div>
     </div>
 
+    <!-- Основной интерфейс -->
     <div id="mainApp" class="hidden">
+        <!-- Шапка с кнопкой выхода -->
+        <div class="header">
+            <h1>🏭 Система 5С - Производство</h1>
+            <div class="header-actions">
+                <span id="currentUserInfo">Пользователь не авторизован</span>
+                <button onclick="logout()" class="logout-btn">🚪 Выйти</button>
+            </div>
+        </div>
+        
         <div class="app-container">
+            <!-- Боковая панель навигации -->
             <div class="sidebar">
                 <h3 style="margin-bottom: 2rem; padding: 0 1rem;">Навигация</h3>
                 <div class="nav-item active" onclick="showSection('dashboard')">📊 Дашборд</div>
@@ -150,7 +252,9 @@ DESKTOP_TEMPLATE = '''
                 <div class="nav-item" id="adminNav" onclick="showSection('admin')" style="display: none;">⚙️ Администрирование</div>
             </div>
             
+            <!-- Основной контент -->
             <div class="main-content">
+                <!-- Дашборд -->
                 <div id="dashboardSection">
                     <div class="user-panel">
                         <h2>Добро пожаловать, <span id="userName"></span>!</h2>
@@ -184,30 +288,39 @@ DESKTOP_TEMPLATE = '''
                     </div>
                 </div>
 
-                <!-- Остальные секции -->
+                <!-- Самопроверка -->
                 <div id="selfCheckSection" class="hidden card">
                     <h3>✅ Самопроверка 5С</h3>
-                    <p>Функциональность в разработке...</p>
+                    <p>Функциональность самопроверки будет реализована в следующем обновлении</p>
+                    <p style="margin-top: 1rem; color: #666;">Работники будут проходить упрощенную ежемесячную самопроверку, выставляя баллы 1-5 по критериям 5С</p>
                 </div>
 
+                <!-- Аудиты -->
                 <div id="auditsSection" class="hidden card">
                     <h3>🔍 Аудиты 5С</h3>
-                    <p>Функциональность в разработке...</p>
+                    <p>Функциональность аудитов будет реализована в следующем обновлении</p>
+                    <p style="margin-top: 1rem; color: #666;">Аудиторы проводят плановые и внеплановые аудиты по полному чек-листу, создают замечания</p>
                 </div>
 
+                <!-- Замечания -->
                 <div id="remarksSection" class="hidden card">
                     <h3>📋 Замечания</h3>
-                    <p>Функциональность в разработке...</p>
+                    <p>Функциональность управления замечаниями будет реализована в следующем обновлении</p>
+                    <p style="margin-top: 1rem; color: #666;">Жизненный цикл замечания: Выявлено → Назначен ответственный → Устранено → Проверено/Закрыто</p>
                 </div>
 
+                <!-- Отчеты -->
                 <div id="reportsSection" class="hidden card">
                     <h3>📈 Отчеты</h3>
-                    <p>Функциональность в разработке...</p>
+                    <p>Функциональность отчетности будет реализована в следующем обновлении</p>
+                    <p style="margin-top: 1rem; color: #666;">Сводки по баллам, динамика, списки замечаний, отчеты по самопроверкам</p>
                 </div>
 
+                <!-- Администрирование -->
                 <div id="adminSection" class="hidden card">
                     <h3>⚙️ Администрирование</h3>
-                    <p>Функциональность в разработке...</p>
+                    <p>Панель администратора будет реализована в следующем обновлении</p>
+                    <p style="margin-top: 1rem; color: #666;">Управление пользователями, ролями, структурой подразделений, чек-листами, графиком аудитов</p>
                 </div>
             </div>
         </div>
@@ -216,9 +329,28 @@ DESKTOP_TEMPLATE = '''
     <script>
         let currentUser = null;
 
+        // Обработчик выбора пользователя
+        function onUserSelect() {
+            const select = document.getElementById('usernameSelect');
+            const username = select.value;
+            
+            // Автозаполняем пароль
+            if (username) {
+                document.getElementById('password').value = username + '123';
+            } else {
+                document.getElementById('password').value = '';
+            }
+        }
+
+        // Функция входа
         async function login() {
-            const username = document.getElementById('username').value;
+            const username = document.getElementById('usernameSelect').value;
             const password = document.getElementById('password').value;
+            
+            if (!username) {
+                document.getElementById('loginError').textContent = 'Пожалуйста, выберите пользователя из списка';
+                return;
+            }
             
             try {
                 const response = await fetch('/auth/login', {
@@ -235,41 +367,47 @@ DESKTOP_TEMPLATE = '''
                     document.getElementById('loginScreen').classList.add('hidden');
                     document.getElementById('mainApp').classList.remove('hidden');
                     
-                    // Обновляем информацию
+                    // Обновляем информацию в шапке
+                    document.getElementById('currentUserInfo').textContent = 
+                        `${currentUser.username} (${data.user.role_display})`;
                     document.getElementById('userName').textContent = currentUser.username;
                     document.getElementById('userRole').textContent = data.user.role_display;
                     document.getElementById('userDepartment').textContent = data.user.department_name || 'Не назначено';
                     
-                    // Показываем админ-панель для админов
+                    // Показываем админ-панель для соответствующих ролей
                     if (['admin', 'quality_director', 'production_director'].includes(currentUser.role)) {
                         document.getElementById('adminNav').style.display = 'block';
                     }
                     
+                    // Загружаем статистику
                     loadDashboardStats();
                     
                 } else {
-                    document.getElementById('loginError').textContent = 'Ошибка входа';
+                    const errorData = await response.json();
+                    document.getElementById('loginError').textContent = errorData.message || 'Ошибка входа. Проверьте правильность данных.';
                 }
             } catch (error) {
-                document.getElementById('loginError').textContent = 'Ошибка сети';
+                document.getElementById('loginError').textContent = 'Ошибка сети: ' + error.message;
             }
         }
         
+        // Показать секцию
         function showSection(sectionName) {
             // Скрываем все секции
             document.querySelectorAll('.main-content > div').forEach(section => {
                 section.classList.add('hidden');
             });
-            // Показываем нужную
+            // Показываем нужную секцию
             document.getElementById(sectionName + 'Section').classList.remove('hidden');
             
-            // Обновляем навигацию
+            // Обновляем активную навигацию
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.classList.remove('active');
             });
             event.target.classList.add('active');
         }
         
+        // Загрузка статистики
         async function loadDashboardStats() {
             try {
                 const response = await fetch('/api/dashboard/stats');
@@ -285,14 +423,32 @@ DESKTOP_TEMPLATE = '''
             }
         }
         
+        // Выход из системы
         async function logout() {
             try {
                 await fetch('/auth/logout', {method: 'POST'});
-                location.reload();
+                
+                // Сбрасываем форму
+                document.getElementById('usernameSelect').value = '';
+                document.getElementById('password').value = '';
+                document.getElementById('loginError').textContent = '';
+                
+                // Переключаем экраны
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('mainApp').classList.add('hidden');
+                
+                currentUser = null;
             } catch (error) {
                 console.error('Ошибка выхода:', error);
             }
         }
+        
+        // Обработка нажатия Enter в поле пароля
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
     </script>
 </body>
 </html>
@@ -305,9 +461,12 @@ def index():
 @app.route('/auth/login', methods=['POST'])
 def login():
     data = request.get_json()
-    user = User.query.filter_by(username=data.get('username')).first()
+    username = data.get('username')
+    password = data.get('password')
     
-    if user and user.check_password(data.get('password')):
+    user = User.query.filter_by(username=username).first()
+    
+    if user and user.check_password(password):
         login_user(user)
         return jsonify({
             'message': 'Вход выполнен успешно',
@@ -352,6 +511,8 @@ def init_database():
             db.session.add_all([production, quality, warehouse])
             db.session.commit()
             
+            print("✅ Подразделения созданы")
+            
             # Создаем пользователей по всем ролям из ТЗ
             users_data = [
                 {'username': 'worker1', 'role': 'worker', 'department': production, 'position': 'Оператор станка'},
@@ -371,15 +532,28 @@ def init_database():
                     department_id=user_data['department'].id,
                     position=user_data['position']
                 )
+                # Устанавливаем пароль
                 user.set_password(user_data['username'] + '123')
                 db.session.add(user)
+                print(f"✅ Создан пользователь: {user_data['username']} / {user_data['username']}123")
             
             db.session.commit()
-            print("✅ База данных инициализирована с тестовыми данными")
+            print("✅ Все пользователи созданы успешно")
+            
+            # Проверяем создание
+            user_count = User.query.count()
+            print(f"📊 Всего пользователей в системе: {user_count}")
 
 if __name__ == '__main__':
     print("🚀 Запуск системы 5С по ТЗ...")
     print("📊 База данных: 5s_tz_system.db")
     print("🌐 Доступно по: http://localhost:5001/")
+    print("👥 Тестовые пользователи:")
+    print("   worker1 / worker1123 - Работник")
+    print("   auditor1 / auditor1123 - Аудитор") 
+    print("   manager1 / manager1123 - Руководитель")
+    print("   admin / admin123 - Администратор")
+    print("   quality_dir / quality_dir123 - Директор по качеству")
+    print("   production_dir / production_dir123 - Директор по производству")
     init_database()
-    app.run(debug=True, port=5001)  # Запускаем на другом порту
+    app.run(debug=True, port=5001)
