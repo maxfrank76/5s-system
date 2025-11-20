@@ -5,7 +5,8 @@ from datetime import datetime
 import os
 
 # Импортируем модели
-from models import db, User, Department, Checklist, SelfCheck, Audit, Remark
+from models import db, User, Department, Checklist, CriteriaGroup, Criterion, SelfCheck, SelfCheckAnswer, Audit, Remark
+from self_check import create_sample_checklists, get_self_checklist, create_self_check, save_self_check_answers
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '5s-system-tz-version'
@@ -182,6 +183,23 @@ DESKTOP_TEMPLATE = '''
             background: #2980b9;
         }
         
+        .nav-btn {
+            background: white;
+            border: 2px solid #3498db;
+            color: #3498db;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .nav-btn:hover {
+            background: #3498db;
+            color: white;
+        }
+        
         .error {
             color: #e74c3c;
             margin-top: 1rem;
@@ -190,6 +208,31 @@ DESKTOP_TEMPLATE = '''
             background: #fdf2f2;
             border-radius: 6px;
             border: 1px solid #f5c6cb;
+        }
+        
+        .success {
+            color: #155724;
+            margin-top: 1rem;
+            text-align: center;
+            padding: 10px;
+            background: #d4edda;
+            border-radius: 6px;
+            border: 1px solid #c3e6cb;
+        }
+        
+        /* Стили для чек-листа */
+        .criterion-group {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+        }
+        
+        .criterion-item {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
         }
     </style>
 </head>
@@ -289,10 +332,37 @@ DESKTOP_TEMPLATE = '''
                 </div>
 
                 <!-- Самопроверка -->
-                <div id="selfCheckSection" class="hidden card">
-                    <h3>✅ Самопроверка 5С</h3>
-                    <p>Функциональность самопроверки будет реализована в следующем обновлении</p>
-                    <p style="margin-top: 1rem; color: #666;">Работники будут проходить упрощенную ежемесячную самопроверку, выставляя баллы 1-5 по критериям 5С</p>
+                <div id="selfCheckSection" class="hidden">
+                    <div class="card">
+                        <h3>✅ Самопроверка 5С</h3>
+                        
+                        <!-- Информация о текущей самопроверке -->
+                        <div id="selfCheckInfo" class="hidden" style="background: #e8f5e8; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <h4>📝 Активная самопроверка</h4>
+                            <p>Заполните все критерии и нажмите "Завершить проверку"</p>
+                        </div>
+                        
+                        <!-- История самопроверок -->
+                        <div id="selfCheckHistory" class="hidden">
+                            <h4>📊 История самопроверок</h4>
+                            <div id="historyList"></div>
+                        </div>
+                        
+                        <!-- Кнопки управления -->
+                        <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+                            <button onclick="startSelfCheck()" id="startSelfCheckBtn" class="nav-btn">🔄 Начать новую проверку</button>
+                            <button onclick="loadSelfCheckHistory()" class="nav-btn">📋 Показать историю</button>
+                        </div>
+                        
+                        <!-- Чек-лист -->
+                        <div id="checklistContainer" class="hidden">
+                            <div id="checklistContent"></div>
+                            <button onclick="submitSelfCheck()" style="margin-top: 2rem; background: #28a745;">✅ Завершить проверку</button>
+                        </div>
+                        
+                        <!-- Сообщения -->
+                        <div id="selfCheckMessage" style="display: none;"></div>
+                    </div>
                 </div>
 
                 <!-- Аудиты -->
@@ -328,6 +398,7 @@ DESKTOP_TEMPLATE = '''
 
     <script>
         let currentUser = null;
+        let currentSelfCheckId = null;
 
         // Обработчик выбора пользователя
         function onUserSelect() {
@@ -442,6 +513,208 @@ DESKTOP_TEMPLATE = '''
                 console.error('Ошибка выхода:', error);
             }
         }
+
+        // ========== ФУНКЦИОНАЛ САМОПРОВЕРКИ ==========
+
+        // Начать самопроверку
+        async function startSelfCheck() {
+            try {
+                const response = await fetch('/api/self-check/start', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    currentSelfCheckId = data.self_check_id;
+                    
+                    // Показываем информацию о самопроверке
+                    document.getElementById('selfCheckInfo').classList.remove('hidden');
+                    document.getElementById('startSelfCheckBtn').style.display = 'none';
+                    document.getElementById('selfCheckHistory').classList.add('hidden');
+                    
+                    // Загружаем чек-лист
+                    await loadChecklist();
+                    
+                } else {
+                    const errorData = await response.json();
+                    showSelfCheckMessage(errorData.error, 'error');
+                }
+            } catch (error) {
+                showSelfCheckMessage('Ошибка сети: ' + error.message, 'error');
+            }
+        }
+
+        // Загрузить чек-лист
+        async function loadChecklist() {
+            try {
+                const response = await fetch('/api/self-check/checklist');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    renderChecklist(data);
+                    document.getElementById('checklistContainer').classList.remove('hidden');
+                } else {
+                    const errorData = await response.json();
+                    showSelfCheckMessage(errorData.error, 'error');
+                }
+            } catch (error) {
+                showSelfCheckMessage('Ошибка загрузки чек-листа: ' + error.message, 'error');
+            }
+        }
+
+        // Отобразить чек-лист
+        function renderChecklist(checklist) {
+            const container = document.getElementById('checklistContent');
+            let html = `<h4>${checklist.name}</h4>`;
+            
+            checklist.groups.forEach(group => {
+                html += `
+                    <div class="criterion-group">
+                        <h5 style="color: #2c3e50; margin-bottom: 1rem;">${group.name}</h5>
+                `;
+                
+                group.criteria.forEach(criterion => {
+                    html += `
+                        <div class="criterion-item">
+                            <p style="margin-bottom: 0.5rem; font-weight: 500;">${criterion.description}</p>
+                            <div style="display: flex; gap: 1rem; align-items: center;">
+                                <span style="font-size: 0.9em; color: #666;">Оценка:</span>
+                                <select id="criterion_${criterion.id}" style="width: auto;">
+                                    <option value="">-- Выберите --</option>
+                                    <option value="1">1 - Не выполняется</option>
+                                    <option value="2">2 - Выполняется частично</option>
+                                    <option value="3">3 - Выполняется удовлетворительно</option>
+                                    <option value="4">4 - Выполняется хорошо</option>
+                                    <option value="5">5 - Выполняется отлично</option>
+                                </select>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `</div>`;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // Завершить самопроверку
+        async function submitSelfCheck() {
+            // Собираем ответы
+            const answers = {};
+            const selects = document.querySelectorAll('select[id^="criterion_"]');
+            
+            let allFilled = true;
+            selects.forEach(select => {
+                if (!select.value) {
+                    allFilled = false;
+                    select.style.borderColor = '#e74c3c';
+                } else {
+                    const criterionId = select.id.replace('criterion_', '');
+                    answers[criterionId] = parseInt(select.value);
+                    select.style.borderColor = '';
+                }
+            });
+            
+            if (!allFilled) {
+                showSelfCheckMessage('Пожалуйста, оцените все критерии', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/self-check/${currentSelfCheckId}/submit`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({answers})
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showSelfCheckMessage(`✅ Самопроверка завершена! Ваш результат: ${data.total_score.toFixed(1)}%`, 'success');
+                    
+                    // Сбрасываем состояние
+                    resetSelfCheckUI();
+                    
+                } else {
+                    const errorData = await response.json();
+                    showSelfCheckMessage(errorData.error, 'error');
+                }
+            } catch (error) {
+                showSelfCheckMessage('Ошибка отправки: ' + error.message, 'error');
+            }
+        }
+
+        // Загрузить историю самопроверок
+        async function loadSelfCheckHistory() {
+            try {
+                const response = await fetch('/api/self-check/history');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    renderHistory(data.history);
+                    document.getElementById('selfCheckHistory').classList.remove('hidden');
+                    document.getElementById('checklistContainer').classList.add('hidden');
+                    document.getElementById('selfCheckInfo').classList.add('hidden');
+                }
+            } catch (error) {
+                showSelfCheckMessage('Ошибка загрузки истории: ' + error.message, 'error');
+            }
+        }
+
+        // Отобразить историю
+        function renderHistory(history) {
+            const container = document.getElementById('historyList');
+            
+            if (history.length === 0) {
+                container.innerHTML = '<p>История самопроверок пуста</p>';
+                return;
+            }
+            
+            let html = '';
+            history.forEach(check => {
+                const date = new Date(check.check_date).toLocaleDateString('ru-RU');
+                const status = check.is_completed ? '✅ Завершена' : '🔄 В процессе';
+                const score = check.total_score ? `${check.total_score.toFixed(1)}%` : 'Не оценена';
+                
+                html += `
+                    <div style="padding: 1rem; margin: 0.5rem 0; background: white; border-radius: 8px; border-left: 4px solid #3498db;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${date}</strong> - ${check.department_name}
+                            </div>
+                            <div>
+                                <span style="margin-right: 1rem;">${status}</span>
+                                <strong>${score}</strong>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // Сброс UI самопроверки
+        function resetSelfCheckUI() {
+            currentSelfCheckId = null;
+            document.getElementById('selfCheckInfo').classList.add('hidden');
+            document.getElementById('checklistContainer').classList.add('hidden');
+            document.getElementById('selfCheckHistory').classList.add('hidden');
+            document.getElementById('startSelfCheckBtn').style.display = 'block';
+        }
+
+        // Показать сообщение
+        function showSelfCheckMessage(message, type) {
+            const messageDiv = document.getElementById('selfCheckMessage');
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+            messageDiv.className = type === 'error' ? 'error' : 'success';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
         
         // Обработка нажатия Enter в поле пароля
         document.getElementById('password').addEventListener('keypress', function(e) {
@@ -498,12 +771,143 @@ def dashboard_stats():
     }
     return jsonify(stats)
 
+# ========== API ДЛЯ САМОПРОВЕРОК ==========
+
+@app.route('/api/self-check/checklist')
+@login_required
+def get_self_check_checklist():
+    """Получить чек-лист для самопроверки текущего пользователя"""
+    if not current_user.department:
+        print(f"❌ Пользователь {current_user.username} не привязан к подразделению")
+        return jsonify({'error': 'Пользователь не привязан к подразделению'}), 400
+    
+    print(f"🔍 Поиск чек-листа для пользователя {current_user.username}")
+    print(f"   Подразделение: {current_user.department.name}")
+    print(f"   Тип подразделения: {current_user.department.department_type}")
+    
+    checklist = get_self_checklist(current_user.department.department_type)
+    if not checklist:
+        return jsonify({'error': 'Чек-лист для вашего подразделения не найден'}), 404
+    
+    # Формируем структурированные данные чек-листа
+    checklist_data = {
+        'id': checklist.id,
+        'name': checklist.name,
+        'groups': []
+    }
+    
+    # ИСПРАВЛЕНИЕ: Используем query для сортировки групп
+    groups = CriteriaGroup.query.filter_by(checklist_id=checklist.id).order_by(CriteriaGroup.order_index).all()
+    
+    for group in groups:
+        group_data = {
+            'id': group.id,
+            'name': group.name,
+            'criteria': []
+        }
+        
+        # ИСПРАВЛЕНИЕ: Используем query для сортировки критериев
+        criteria = Criterion.query.filter_by(group_id=group.id).order_by(Criterion.order_index).all()
+        
+        for criterion in criteria:
+            criterion_data = {
+                'id': criterion.id,
+                'description': criterion.description
+            }
+            group_data['criteria'].append(criterion_data)
+        
+        checklist_data['groups'].append(group_data)
+    
+    print(f"✅ Чек-лист найден: {checklist.name} с {len(checklist_data['groups'])} группами")
+    return jsonify(checklist_data)
+
+@app.route('/api/self-check/start', methods=['POST'])
+@login_required
+def start_self_check():
+    """Начать новую самопроверку"""
+    if not current_user.department:
+        return jsonify({'error': 'Пользователь не привязан к подразделению'}), 400
+    
+    checklist = get_self_checklist(current_user.department.department_type)
+    if not checklist:
+        return jsonify({'error': 'Чек-лист для вашего подразделения не найден'}), 404
+    
+    # Проверяем, нет ли активной самопроверки
+    active_check = SelfCheck.query.filter_by(
+        user_id=current_user.id,
+        is_completed=False
+    ).first()
+    
+    if active_check:
+        return jsonify({'error': 'У вас уже есть активная самопроверка'}), 400
+    
+    self_check = create_self_check(
+        current_user.id,
+        current_user.department.id,
+        checklist.id
+    )
+    
+    return jsonify({
+        'message': 'Самопроверка начата',
+        'self_check_id': self_check.id
+    })
+
+@app.route('/api/self-check/<int:self_check_id>/submit', methods=['POST'])
+@login_required
+def submit_self_check(self_check_id):
+    """Отправить результаты самопроверки"""
+    data = request.get_json()
+    answers = data.get('answers', {})
+    
+    if not answers:
+        return jsonify({'error': 'Нет данных для сохранения'}), 400
+    
+    self_check = SelfCheck.query.get_or_404(self_check_id)
+    
+    # Проверяем что самопроверка принадлежит пользователю
+    if self_check.user_id != current_user.id:
+        return jsonify({'error': 'Доступ запрещен'}), 403
+    
+    # Проверяем что самопроверка не завершена
+    if self_check.is_completed:
+        return jsonify({'error': 'Самопроверка уже завершена'}), 400
+    
+    saved_check = save_self_check_answers(self_check_id, answers)
+    
+    return jsonify({
+        'message': 'Самопроверка завершена',
+        'total_score': saved_check.total_score
+    })
+
+@app.route('/api/self-check/history')
+@login_required
+def get_self_check_history():
+    """Получить историю самопроверок пользователя"""
+    checks = SelfCheck.query.filter_by(user_id=current_user.id).order_by(SelfCheck.check_date.desc()).all()
+    
+    history = []
+    for check in checks:
+        history.append({
+            'id': check.id,
+            'check_date': check.check_date.isoformat(),
+            'total_score': check.total_score,
+            'is_completed': check.is_completed,
+            'department_name': check.department.name
+        })
+    
+    return jsonify({'history': history})
+
 def init_database():
     with app.app_context():
         db.create_all()
         
         if not User.query.first():
-            # Создаем структуру подразделений
+            # Удаляем старые данные для чистоты
+            User.query.delete()
+            Department.query.delete()
+            Checklist.query.delete()
+            
+            # Создаем структуру подразделений с правильными типами
             production = Department(name='Производственный цех №1', department_type='production')
             quality = Department(name='Отдел технического контроля', department_type='quality')
             warehouse = Department(name='Склад', department_type='warehouse')
@@ -511,7 +915,10 @@ def init_database():
             db.session.add_all([production, quality, warehouse])
             db.session.commit()
             
-            print("✅ Подразделения созданы")
+            print("✅ Подразделения созданы:")
+            print(f"   - {production.name} (тип: {production.department_type})")
+            print(f"   - {quality.name} (тип: {quality.department_type})") 
+            print(f"   - {warehouse.name} (тип: {warehouse.department_type})")
             
             # Создаем пользователей по всем ролям из ТЗ
             users_data = [
@@ -540,9 +947,14 @@ def init_database():
             db.session.commit()
             print("✅ Все пользователи созданы успешно")
             
+            # Создаем примерные чек-листы
+            create_sample_checklists()
+            
             # Проверяем создание
             user_count = User.query.count()
+            checklist_count = Checklist.query.count()
             print(f"📊 Всего пользователей в системе: {user_count}")
+            print(f"📋 Всего чек-листов в системе: {checklist_count}")
 
 if __name__ == '__main__':
     print("🚀 Запуск системы 5С по ТЗ...")
