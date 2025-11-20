@@ -867,7 +867,7 @@ def submit_self_check(self_check_id):
     # Проверяем что самопроверка принадлежит пользователю
     if self_check.user_id != current_user.id:
         return jsonify({'error': 'Доступ запрещен'}), 403
-    
+                
     # Проверяем что самопроверка не завершена
     if self_check.is_completed:
         return jsonify({'error': 'Самопроверка уже завершена'}), 400
@@ -896,6 +896,40 @@ def get_self_check_history():
         })
     
     return jsonify({'history': history})
+
+# ========== НОВЫЕ МАРШРУТЫ ДЛЯ АКТИВНЫХ ПРОВЕРОК ==========
+# Добавить после существующего маршрута /api/self-check/history
+
+@app.route('/api/self-check/active')
+@login_required
+def get_active_self_check():
+    """Получить активную (незавершенную) самопроверку пользователя"""
+    active_check = SelfCheck.query.filter_by(
+        user_id=current_user.id,
+        is_completed=False
+    ).first()
+    
+    if active_check:
+        return jsonify({
+            'id': active_check.id,
+            'checklist_id': active_check.checklist_id,
+            'started_at': active_check.check_date.isoformat(),
+            'answers': active_check.answers or {}
+        })
+    else:
+        return jsonify({'active_check': None})
+
+@app.route('/api/self-check/<int:check_id>/cancel', methods=['DELETE'])
+@login_required
+def cancel_self_check(check_id):
+    """Отменить самопроверку"""
+    check = SelfCheck.query.get_or_404(check_id)
+    if check.user_id != current_user.id:
+        return jsonify({'error': 'Доступ запрещен'}), 403
+    
+    db.session.delete(check)
+    db.session.commit()
+    return jsonify({'message': 'Проверка отменена'})
 
 def init_database():
     with app.app_context():
